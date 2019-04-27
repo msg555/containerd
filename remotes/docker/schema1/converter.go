@@ -227,6 +227,15 @@ func (c *Converter) Convert(ctx context.Context, opts ...ConvertOpt) (ocispec.De
 	return desc, nil
 }
 
+func ReadStripSignature(schema1Blob io.Reader) ([]byte, error) {
+	b, err := ioutil.ReadAll(io.LimitReader(schema1Blob, manifestSizeLimit)) // limit to 8MB
+	if err != nil {
+		return nil, err
+	}
+
+	return stripSignature(b)
+}
+
 func (c *Converter) fetchManifest(ctx context.Context, desc ocispec.Descriptor) error {
 	log.G(ctx).Debug("fetch schema 1")
 
@@ -235,13 +244,8 @@ func (c *Converter) fetchManifest(ctx context.Context, desc ocispec.Descriptor) 
 		return err
 	}
 
-	b, err := ioutil.ReadAll(io.LimitReader(rc, manifestSizeLimit)) // limit to 8MB
+	b, err := ReadStripSignature(rc)
 	rc.Close()
-	if err != nil {
-		return err
-	}
-
-	b, err = stripSignature(b)
 	if err != nil {
 		return err
 	}
